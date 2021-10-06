@@ -306,6 +306,10 @@ func (c *callbacks) process(msg *Message) {
 			close(callback.ch)
 			delete(c.data, method)
 		case callback.ch <- callbackResult{message: clientMsg}:
+		default:
+			callback.cancel()
+			close(callback.ch)
+			delete(c.data, method)
 		}
 	}
 }
