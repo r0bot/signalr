@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+
+	"golang.org/x/sync/errgroup"
 )
 
 type Client struct {
@@ -38,23 +40,35 @@ func NewClient(hub string, conn *Conn) *Client {
 }
 
 func (c *Client) Run(ctx context.Context) error {
-	for {
-		select {
-		case <-ctx.Done():
-			c.invocations.removeAll()
-			c.callbacks.removeAll()
-			return c.conn.Close()
-		default:
-		}
+	g, ctx := errgroup.WithContext(ctx)
 
-		var msg Message
-		if err := c.conn.ReadMessage(ctx, &msg); err != nil {
-			return err
-		}
+	message := make(chan Message)
+	defer close(message)
 
-		c.invocations.process(&msg)
-		c.callbacks.process(&msg)
-	}
+	g.Go(func() error {
+		for {
+			select {
+			case <-ctx.Done():
+				c.invocations.removeAll()
+				c.callbacks.removeAll()
+				return c.conn.Close()
+			case msg := <-message:
+				c.invocations.process(&msg)
+				c.callbacks.process(&msg)
+			}
+		}
+	})
+
+	g.Go(func() error {
+		for {
+			var msg Message
+			if err := c.conn.ReadMessage(ctx, &msg); err != nil {
+				return fmt.Errorf("failed to read message from websocket: %w", err)
+			}
+			message <- msg
+		}
+	})
+	return g.Wait()
 }
 
 func (c *Client) Invoke(ctx context.Context, method string, args ...interface{}) *Invocation {
