@@ -35,7 +35,7 @@ func NewClient(hub string, conn *Conn) *Client {
 		hub:         hub,
 		conn:        conn,
 		invocations: newInvocations(),
-		callbacks:   newCallbacks(),
+		callbacks:   newCallbacks(conn.config),
 	}
 }
 
@@ -265,13 +265,15 @@ func (i *invocations) removeAll() {
 }
 
 type callbacks struct {
-	mtx  sync.Mutex
-	data map[string]*CallbackStream
+	mtx    sync.Mutex
+	config *config
+	data   map[string]*CallbackStream
 }
 
-func newCallbacks() *callbacks {
+func newCallbacks(config *config) *callbacks {
 	return &callbacks{
-		data: make(map[string]*CallbackStream),
+		data:   make(map[string]*CallbackStream),
+		config: config,
 	}
 }
 
@@ -315,16 +317,22 @@ func (c *callbacks) process(msg *Message) {
 			continue
 		}
 
+		// if in given time it is not managing to write message we will cancel the context
+		wrCtx, wrCtxCancel := context.WithTimeout(callback.ctx, c.config.MaxMessageProcessDuration)
+
 		select {
 		case <-callback.ctx.Done():
 			close(callback.ch)
 			delete(c.data, method)
 		case callback.ch <- callbackResult{message: clientMsg}:
-		default:
+		case <-wrCtx.Done():
+			wrCtxCancel()
 			callback.cancel()
 			close(callback.ch)
 			delete(c.data, method)
 		}
+
+		wrCtxCancel()
 	}
 }
 
