@@ -82,18 +82,26 @@ func MaxReconnectDuration(duration time.Duration) DialOpt {
 	}
 }
 
+// MaxMessageProcessDuration the maximum amount of time to spend on processing message
+func MaxMessageProcessDuration(duration time.Duration) DialOpt {
+	return func(c *config) {
+		c.MaxMessageProcessDuration = duration
+	}
+}
+
 type config struct {
-	Client               *http.Client
-	Dialer               WebsocketDialerFunc
-	Protocol             string
-	Params               url.Values
-	Headers              http.Header
-	MaxNegotiateRetries  int
-	MaxConnectRetries    int
-	MaxReconnectRetries  int
-	MaxReconnectDuration time.Duration
-	MaxStartRetries      int
-	RetryInterval        time.Duration
+	Client                    *http.Client
+	Dialer                    WebsocketDialerFunc
+	Protocol                  string
+	Params                    url.Values
+	Headers                   http.Header
+	MaxNegotiateRetries       int
+	MaxConnectRetries         int
+	MaxReconnectRetries       int
+	MaxReconnectDuration      time.Duration
+	MaxStartRetries           int
+	RetryInterval             time.Duration
+	MaxMessageProcessDuration time.Duration
 }
 
 func (c config) NegotiateBackoff() backoff.BackOff {
@@ -113,17 +121,18 @@ func (c config) StartBackoff() backoff.BackOff {
 }
 
 var defaultConfig = config{
-	Client:               http.DefaultClient,
-	Dialer:               NewDefaultDialer,
-	Protocol:             "1.5",
-	Params:               make(url.Values),
-	Headers:              make(http.Header),
-	MaxNegotiateRetries:  5,
-	MaxConnectRetries:    5,
-	MaxReconnectRetries:  5,
-	MaxReconnectDuration: 5 * time.Minute,
-	MaxStartRetries:      5,
-	RetryInterval:        1 * time.Second,
+	Client:                    http.DefaultClient,
+	Dialer:                    NewDefaultDialer,
+	Protocol:                  "1.5",
+	Params:                    make(url.Values),
+	Headers:                   make(http.Header),
+	MaxNegotiateRetries:       5,
+	MaxConnectRetries:         5,
+	MaxReconnectRetries:       5,
+	MaxReconnectDuration:      5 * time.Minute,
+	MaxStartRetries:           5,
+	RetryInterval:             1 * time.Second,
+	MaxMessageProcessDuration: 10 * time.Second,
 }
 
 func constantBackoff(interval time.Duration, maxRetries int) backoff.BackOff {

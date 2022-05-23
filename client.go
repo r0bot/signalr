@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"time"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -35,7 +36,7 @@ func NewClient(hub string, conn *Conn) *Client {
 		hub:         hub,
 		conn:        conn,
 		invocations: newInvocations(),
-		callbacks:   newCallbacks(),
+		callbacks:   newCallbacks(conn.config.MaxMessageProcessDuration),
 	}
 }
 
@@ -265,13 +266,15 @@ func (i *invocations) removeAll() {
 }
 
 type callbacks struct {
-	mtx  sync.Mutex
-	data map[string]*CallbackStream
+	mtx                       sync.Mutex
+	maxMessageProcessDuration time.Duration
+	data                      map[string]*CallbackStream
 }
 
-func newCallbacks() *callbacks {
+func newCallbacks(maxMessageProcessDuration time.Duration) *callbacks {
 	return &callbacks{
-		data: make(map[string]*CallbackStream),
+		data:                      make(map[string]*CallbackStream),
+		maxMessageProcessDuration: maxMessageProcessDuration,
 	}
 }
 
@@ -315,16 +318,21 @@ func (c *callbacks) process(msg *Message) {
 			continue
 		}
 
+		// if in given time it is not managing to write message we will cancel the context
+		wrCtx, wrCtxCancel := context.WithTimeout(callback.ctx, c.maxMessageProcessDuration)
+
 		select {
 		case <-callback.ctx.Done():
 			close(callback.ch)
 			delete(c.data, method)
 		case callback.ch <- callbackResult{message: clientMsg}:
-		default:
+		case <-wrCtx.Done():
 			callback.cancel()
 			close(callback.ch)
 			delete(c.data, method)
 		}
+
+		wrCtxCancel()
 	}
 }
 
