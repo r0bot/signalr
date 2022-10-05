@@ -39,7 +39,7 @@ type State struct {
 
 // Dial connects to Signalr endpoint
 func Dial(ctx context.Context, endpoint, cdata string, opts ...DialOpt) (*Conn, error) {
-	cfg := defaultConfig
+	cfg := newDefaultConfig()
 	for _, opt := range opts {
 		opt(&cfg)
 	}
