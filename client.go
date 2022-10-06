@@ -40,6 +40,11 @@ func NewClient(hub string, conn *Conn) *Client {
 	}
 }
 
+// Close closes underlying websocket connection
+func (c *Client) Close() error {
+	return c.conn.Close()
+}
+
 func (c *Client) Run(ctx context.Context) error {
 	g, ctx := errgroup.WithContext(ctx)
 

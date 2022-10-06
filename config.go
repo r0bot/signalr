@@ -120,19 +120,21 @@ func (c config) StartBackoff() backoff.BackOff {
 	return constantBackoff(c.RetryInterval, c.MaxStartRetries)
 }
 
-var defaultConfig = config{
-	Client:                    http.DefaultClient,
-	Dialer:                    NewDefaultDialer,
-	Protocol:                  "1.5",
-	Params:                    make(url.Values),
-	Headers:                   make(http.Header),
-	MaxNegotiateRetries:       5,
-	MaxConnectRetries:         5,
-	MaxReconnectRetries:       5,
-	MaxReconnectDuration:      5 * time.Minute,
-	MaxStartRetries:           5,
-	RetryInterval:             1 * time.Second,
-	MaxMessageProcessDuration: 10 * time.Second,
+var newDefaultConfig = func() config {
+	return config{
+		Client:                    http.DefaultClient,
+		Dialer:                    NewDefaultDialer,
+		Protocol:                  "1.5",
+		Params:                    make(url.Values),
+		Headers:                   make(http.Header),
+		MaxNegotiateRetries:       5,
+		MaxConnectRetries:         5,
+		MaxReconnectRetries:       5,
+		MaxReconnectDuration:      5 * time.Minute,
+		MaxStartRetries:           5,
+		RetryInterval:             1 * time.Second,
+		MaxMessageProcessDuration: 10 * time.Second,
+	}
 }
 
 func constantBackoff(interval time.Duration, maxRetries int) backoff.BackOff {
