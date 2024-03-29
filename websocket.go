@@ -55,14 +55,6 @@ func NewDefaultDialer(client *http.Client) WebsocketDialer {
 	}
 }
 
-func NewDefaultDialerTLS(cfg *tls.Config) WebsocketDialer {
-	return defaultDialer{
-		Dialer: websocket.Dialer{
-			TLSClientConfig: cfg,
-		},
-	}
-}
-
 func (d defaultDialer) Dial(ctx context.Context, u string, headers http.Header) (WebsocketConn, int, error) {
 	//nolint:bodyclose
 	conn, res, err := d.DialContext(ctx, u, headers)
