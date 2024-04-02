@@ -131,7 +131,7 @@ func (s *CallbackStream) Read(args ...interface{}) error {
 	}
 
 	if err := unmarshalArgs(res.message.Args, args); err != nil {
-		return fmt.Errorf("failed to unmarshal ")
+		return fmt.Errorf("failed to unmarshal message: %v", err)
 	}
 
 	return nil
@@ -148,7 +148,10 @@ func (s *CallbackStream) readResult() callbackResult {
 	select {
 	case <-s.ctx.Done():
 		return callbackResult{err: s.ctx.Err()}
-	case res := <-s.ch:
+	case res, ok := <-s.ch:
+		if !ok {
+			return callbackResult{err: context.Canceled}
+		}
 		return res
 	}
 }
